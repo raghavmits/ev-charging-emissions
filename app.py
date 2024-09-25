@@ -44,7 +44,7 @@ ORDER BY point_time;
 def load_data(query):
     query_job = client.query(query)
     results = query_job.result()  # Get result
-    print(type(results))
+    # print(type(results))
     df = results.to_dataframe(dtypes={'point_time': 'datetime64[ns, America/Chicago]'})
 
     return df
