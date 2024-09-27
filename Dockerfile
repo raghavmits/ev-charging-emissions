@@ -10,6 +10,9 @@ COPY . /app
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Set PORT env variable as GCP seems to read this and redirect incoming traffic to $PORT
+ENV PORT 8501
+
 # Expose the default port for Streamlit
 EXPOSE 8501
 
