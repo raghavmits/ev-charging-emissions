@@ -19,16 +19,29 @@ credentials = service_account.Credentials.from_service_account_file("charging-an
 client = bigquery.Client(credentials=credentials, project='charging-analysis')
 
 # Title of the Streamlit app
-st.title("Potential Emissions Reduction via AER 🚗🔌⚡🔋🎯")
-st.info("Cut down on EV charging-related emissions without any behavioral change")
+st.title("Reducing EV Charging Emissions with Smart Data Insights 🚗🔌⚡🔋🎯")
+# Info section with a call-to-action and emphasis
+st.info(
+    """
+    **Unlock a Greener Future!**  
+    Effortlessly minimize EV charging emissions without changing user behavior.  
+    Leverage smart insights to make a positive impact on the environment while maintaining convenience.
+    """
+)
 with st.expander("How does it work?"):  
     st.write("""
-    This app explores the potential for reducing EV-charging related CO2 emissions through load shifting. At any moment, the electricity we use 
+    This app explores the potential for reducing EV-charging related CO₂ emissions through load shifting in Kansas. At any moment, the electricity we use 
     comes from various sources—coal, natural gas, oil, hydro, nuclear, solar, wind, and geothermal. Not all of these sources 
     are equally clean, with some contributing significantly more to pollution than others. 
 
     By forecasting the mix of electricity sources, we can estimate the cleanliness of the energy at a given time. 
     'Load shifting' leverages this knowledge, allowing us to shift energy consumption to periods when cleaner energy is available.
+             
+    Here, we estimate potential reduction in emissions if EVs in Kansas were charged with 'Load Shifting' insights.
+             
+    Data Source: [WattTime](https://wattime.org)
+
+    Integrate [WattTime's AER API](https://watttime.org/data-science/data-signals/marginal-co2/) with your charging software for seamless emissions reduction
 """)
 
 
@@ -61,7 +74,7 @@ with st.sidebar:
   user_inputs['annual_mileage'] = st.slider('Annual mileage (miles)', 10000, 16000, 14000)
   user_inputs['ev_range'] = st.slider('EV range (miles)', 220, 400, 250)
   user_inputs['miles_per_kwh'] = st.slider('EV charging efficiency (miles per kWh)', 2.5, 4.5, 3.0)
-  user_inputs['charger_power_rating'] = st.slider('Charger power rating (kWatt)', 7, 18, 11)
+  user_inputs['charger_power_rating'] = st.slider('Charger power rating (kWatt)', 7, 16, 9)
 
   st.markdown("---")
 
@@ -69,8 +82,8 @@ with st.sidebar:
   user_inputs['num_charging_days_per_week'] = st.slider('No. of charging days per week', 4, 7, 6)
 
   default_time = time(23, 0)
-  user_inputs['input_time'] = st.time_input('Select a baseline charging time between 9pm and 4am:', default_time)
-#   st.info("This is an info message. You can provide helpful information to your users here.")
+  user_inputs['input_time'] = st.time_input('Select baseline charging start time between 9pm and 4am:', default_time)
+#  st.info("This is an info message. You can provide helpful information to your users here.")
 
   st.write(f"You selected: {user_inputs['input_time']}")
 
@@ -295,11 +308,14 @@ def plot_time_series(df, day_long=False, mark_lowest_n=False, mark_baseline_char
         raise ValueError("The DataFrame must contain a 'moer_lb_per_mwh' column.")
 
     # Plotting the time series
-    plt.figure(figsize=(20, 8))
+    plt.figure(figsize=(20, 9))
     plt.plot(df.index, df['moer_lb_per_mwh'], marker='o', linestyle='-', label='MOER Values')
 
     if day_long:
-        plt.title(f'CO2 Marginal Emissions Rate (lb of CO2/MWh) for Date: {df.index[0].date()}', fontsize=20)
+        plt.title(f'CO₂ Marginal Emissions Rate (lb of CO₂/MWh) for Date: {df.index[0].date()}', fontsize=22, pad=25)
+
+    # Adjust the layout to add space above the title
+    plt.subplots_adjust(top=0.85)
 
     # Highlight lowest 'moer_lb_per_mwh' values
     if mark_lowest_n and 'lowest_n' in df.columns:
@@ -326,12 +342,12 @@ def plot_time_series(df, day_long=False, mark_lowest_n=False, mark_baseline_char
                 plt.axvspan(df.index[i], df.index[i + 1], color='red', alpha=0.3)
 
     # Axis labels and formatting
-    plt.xlabel('Time (from 9pm to 6am - Widow of Opportunity for charging)', fontsize=18)
-    plt.ylabel('Emissions Intensity (lb of CO2/MWh)', fontsize=18)
-    plt.legend(loc='best', fontsize=14)
+    plt.xlabel('Time (from 9pm to 6am - Widow of Opportunity for charging)', fontsize=18, labelpad=16)
+    plt.ylabel('Emissions Intensity (lb of CO₂/MWh)', fontsize=18, labelpad=30 )
+    plt.legend(loc='best', fontsize=18)
     plt.grid(True)
     plt.yticks(fontsize=14)
-    plt.xticks(rotation=45, fontsize=14)  # Rotate x-axis labels for better readability
+    plt.xticks(rotation=45, fontsize=18)  # Rotate x-axis labels for better readability
     plt.tight_layout()
 
     # Render the plot in Streamlit
@@ -365,20 +381,26 @@ def plot_emissions(df):
     # Update layout for better readability
     fig.update_layout(
         title='EV Charging Related Emissions Data for the Year 2023',
-        title_font=dict(size=24),  # Increase title font size
+        title_font=dict(size=20, color='black', family='Arial'), 
+        title_x=0.5,  
+        title_xanchor='center',  
         xaxis_title='Date',
-        yaxis_title='CO2 Emissions from charging (lb of CO2)',
-        xaxis_title_font=dict(size=18),  # Increase x-axis title font size
-        yaxis_title_font=dict(size=18), 
-        xaxis_tickformat='%m-%d',  # Format for x-axis
-        xaxis_rangeslider_visible=True,  # Enable the range slider
-        height=600,  # Set the height of the graph
-        font=dict(size=22),  # Set the font size for axes and legend
-        legend=dict(font=dict(size=18)),  # Set the font size for legend
-        template='plotly_white',
-        xaxis=dict(tickfont=dict(size=16)),  # Increase x-axis tick font size
-        yaxis=dict(tickfont=dict(size=16))   # Increase y-axis tick font size
+        yaxis_title='Emissions (lb of CO₂)',
+        xaxis_title_font=dict(size=18, color='black'),  
+        yaxis_title_font=dict(size=18, color='black'), 
+        xaxis_tickformat='%m-%d',  
+        xaxis_rangeslider_visible=True,  
+        height=600, 
+        font=dict(size=20, color='black'),  # Set axes and legend font size and color
+        legend=dict(font=dict(size=18, color='black'), orientation='h', yanchor='top', y=-0.6, xanchor='center', x=0.5),  # Position legend below the graph
+        template='plotly_white',  # Use Plotly's white template
+        xaxis=dict(tickfont=dict(size=16, color='black')),  # Set x-axis tick font size and color
+        yaxis=dict(tickfont=dict(size=16, color='black')),  # Set y-axis tick font size and color
+        plot_bgcolor='white',  # Set plot background color to white
+        paper_bgcolor='white'   # Set paper background color to white
     )
+
+
     
     # Show the plot in Streamlit
     st.plotly_chart(fig)
@@ -406,23 +428,14 @@ def display_calculated_values():
         st.markdown('---')
 
 # Access user input values and perform calculations
-if st.button('Calculate charging time per session'):  # Add a button to trigger calculations
+if st.button('Calculate Emissions Reduction Potential'):  # Button to trigger calculations
     st.session_state.miles_needed_per_day = user_inputs['annual_mileage'] / (user_inputs['num_charging_days_per_week'] * 52)
     st.session_state.charging_time_hours = st.session_state.miles_needed_per_day / (user_inputs['miles_per_kwh'] * user_inputs['charger_power_rating'])
     
-    # # For visualizing the line chart and displaying the table
-    # st.subheader("Visualizing the original table and the transformed table")
-    
-    # Example: Display a table
+    # Transform and store data
     st.session_state.transformed_dfs = transform_df(df, st.session_state.charging_time_hours)
-    # st.write("An example dataframe from the transformed_dfs list of all the daily dfs")
-    # st.dataframe(st.session_state.transformed_dfs[10])
-
     st.session_state.final_df_with_results = get_daily_recommended_and_baseline_emissions(st.session_state.transformed_dfs, user_inputs, st.session_state.charging_time_hours)
-    # st.write("Dataframe detailing the baseline charging and recommended charging emissions for every day of the year")
-    # st.dataframe(st.session_state.final_df_with_results)
-    # st.markdown('---')
-
+    
     # Set calculation_done to True
     st.session_state.calculation_done = True
 
@@ -431,27 +444,38 @@ display_calculated_values()
 
 # Estimating the final results
 if st.session_state.calculation_done:
-    st.subheader("Estimated savings: Baseline Charging Approach v/s Recommended Charging Approach")
+    st.subheader("📊 Impact on Emissions: Baseline vs. Recommended Charging Strategies")
+    
     multiplication_factor = user_inputs['num_charging_days_per_week'] * 52
     annual_emissions_recommended_charging = st.session_state.final_df_with_results['total_emissions_recommended_charging'].mean() * multiplication_factor
     annual_emissions_baseline_charging = st.session_state.final_df_with_results['total_emissions_baseline_charging'].mean() * multiplication_factor
     annual_emissions_avoided = annual_emissions_baseline_charging - annual_emissions_recommended_charging
     percentage_emissions_avoided = 100 * (annual_emissions_avoided) / annual_emissions_baseline_charging
-    st.write(f"* Total annual emissions associated with Baseline Charging Approach: **{annual_emissions_baseline_charging:.2f} lb of CO2**")
-    st.write(f"* Total annual emissions associated with Recommended Charging Approach: **{annual_emissions_recommended_charging:.2f} lb of CO2**")
-    st.write(f"* Total annual emissions avoided: **{annual_emissions_avoided:.2f} lb of CO2**")
-    st.write(f"* % Emissions avoided: **{percentage_emissions_avoided:.2f}%**")
-    annual_emissions_avoided_tree_equivalent = annual_emissions_avoided / 48
-    st.info(f"For perspective, the total CO2 avoided is approximately equal to the CO2 absorbed by {annual_emissions_avoided_tree_equivalent:.1f} mature trees over the course of a year")
 
-with st.expander('Visualize the daily Marginal Operating Emisisons Rate at night'):
+    # Highlighting important numbers
+    st.markdown(f"#### Key Results")
+    st.markdown(f"* **Total annual emissions associated with Baseline Charging Approach:** **{annual_emissions_baseline_charging:.0f} lb of CO₂**")
+    st.markdown(f"* **Total annual emissions associated with Recommended Charging Approach:** **{annual_emissions_recommended_charging:.0f} lb of CO₂**")
+    st.markdown(f"* **Total annual emissions avoided:** **{annual_emissions_avoided:.0f} lb of CO₂**")
+
+    # Highlight the percentage number using HTML in green
+    highlighted_percentage = f"<span style='color: green; font-weight: bold; font-size: 18px;'>{percentage_emissions_avoided:.2f}%</span>"
+
+    # Use st.markdown to display the info with the highlighted percentage
+    st.markdown(f"* **Percentage of emissions avoided:** **{highlighted_percentage}**", unsafe_allow_html=True)
+
+    annual_emissions_avoided_tree_equivalent = annual_emissions_avoided / 48
+    st.info(f"For perspective, total CO₂ avoided ~ CO₂ absorbed by **{annual_emissions_avoided_tree_equivalent:.1f} mature trees 🌳** over the course of a year.")
+
+with st.expander('Visualize recommended charging times on any given night (9pm to 6am)'):
     if st.session_state.calculation_done:
+
         # Assuming transformed_dfs is a list of DataFrames and each DataFrame's index is a datetime object
         # and there's a corresponding list of dates for the DataFrames
         dates = [df.index[0].date() for df in st.session_state.transformed_dfs]  # Get the list of dates from the DataFrames
 
         # Create a date input for user to select a date
-        st.session_state.selected_date = st.date_input("Select a date:", value=pd.to_datetime(st.session_state.transformed_dfs[0].index[0]).date())
+        st.session_state.selected_date = st.date_input("Select a date from the year 2023:", value=pd.to_datetime(st.session_state.transformed_dfs[0].index[0]).date())
 
         # Automatically update the selected transformed DataFrame when the date is changed
         if st.session_state.selected_date in dates:
@@ -459,8 +483,11 @@ with st.expander('Visualize the daily Marginal Operating Emisisons Rate at night
             index_of_selected_date = dates.index(st.session_state.selected_date)
             # Get the corresponding DataFrame
             st.session_state.selected_transformed_df = st.session_state.transformed_dfs[index_of_selected_date]
+            
             # Display the DataFrame or pass it to your plotting function
-            st.dataframe(st.session_state.selected_transformed_df)  
+            # st.dataframe(st.session_state.selected_transformed_df)  
+
+            #Plotting the time series graph
             plot_time_series(st.session_state.selected_transformed_df, day_long=True, mark_lowest_n=True, mark_baseline_charging=True)
 
 
@@ -471,9 +498,9 @@ with st.expander('Visualize the daily Marginal Operating Emisisons Rate at night
 
 
 
-with st.expander('Visualize the daily emissions associated with baseline charging approach v/s recommended charging approach'):
+with st.expander('Visualize the daily emissions associated with baseline v/s recommended charging approach'):
     if st.session_state.calculation_done:
-        st.dataframe(st.session_state.final_df_with_results)
+        # st.dataframe(st.session_state.final_df_with_results)
         plot_emissions(st.session_state.final_df_with_results)
     else:
         st.warning("Please calculate the charging time first.")
