@@ -4,9 +4,11 @@ from google.cloud import bigquery
 import plotly.express as px
 import matplotlib.pyplot as plt
 from google.oauth2 import service_account
-from datetime import time
+from datetime import time, datetime
 import plotly.graph_objects as go
 import json
+from ev_data import ev_data, ev_charger_data
+
 
 # Set the app width to 100%
 st.set_page_config(page_title="Charging Analysis App", layout="wide")
@@ -70,11 +72,42 @@ except Exception as e:
 # Input features with a dictionary to store values
 user_inputs = {}  # Create an empty dictionary to store user input slider values
 with st.sidebar:
+
   st.header('EV Owner Profile')
-  user_inputs['annual_mileage'] = st.slider('Annual mileage (miles)', 10000, 16000, 14000)
-  user_inputs['ev_range'] = st.slider('EV range (miles)', 220, 400, 250)
-  user_inputs['miles_per_kwh'] = st.slider('EV charging efficiency (miles per kWh)', 2.5, 4.5, 3.0)
-  user_inputs['charger_power_rating'] = st.slider('Charger power rating (kWatt)', 7, 16, 9)
+  user_inputs['annual_mileage'] = st.slider('Annual mileage (miles)', 10000, 17000, 14000)
+  user_inputs['ev_range'] = st.slider('EV range (miles)', 180, 400, 240)
+
+  # Create columns for the slider and button
+  col1, col2 = st.columns([5, 1])  # Adjust the ratio as needed
+
+  # Slider in the first column
+  user_inputs['miles_per_kwh'] = col1.slider('EV charging efficiency (miles per kWh)', 2.5, 5.0, 3.4)
+
+  # Button in the second column
+  if col2.button("ℹ️", key="info_button_charging_eficiency"):
+    # Prepare the message for the toast popup
+    message = "EV Charging Efficiency (miles per kWh) for popular EVs:\n"
+    for ev in ev_data:
+        message += f"- {ev['model']}: {ev['efficiency_miles_per_kWh']}\n"
+    
+    # Display the message in a toast popup
+    st.toast(message)
+
+
+  # Create columns for the slider and button
+  col3, col4 = st.columns([5, 1])  # Adjust the ratio as needed
+
+  user_inputs['charger_power_rating'] = col3.slider('Charger power rating (kWatt)', 6, 17, 8)
+  # Button in the second column
+  if col4.button("ℹ️", key="info_button_charger_rating"):
+    # Prepare the message for the toast popup
+    message = "Charger Power Rating (kW) for popular EVs:\n"
+    for ev in ev_charger_data:
+        message += f"- {ev['model']}: {ev['charger_power_rating_kW']}\n"
+    
+    # Display the message in a toast popup
+    st.toast(message)
+
 
   st.markdown("---")
 
@@ -285,13 +318,12 @@ def get_daily_recommended_and_baseline_emissions(dfs, user_inputs, charging_time
 
 
 # Function to plot daily time series graphs
-def plot_time_series(df, day_long=False, mark_lowest_n=False, mark_baseline_charging=False):
+def plot_time_series(df, mark_lowest_n=False, mark_baseline_charging=False):
     """
     Plots a time series graph for CO2 Marginal Emissions Rate (lb of CO2/MWh).
 
     Parameters:
     df (pd.DataFrame): DataFrame with 'point_time' as the index and 'moer_lb_per_mwh' as a column.
-    day_long (bool): If True, add a title indicating the date of the plot.
     mark_lowest_n (bool): If True, highlight the lowest 'moer_lb_per_mwh' values.
     mark_baseline_charging (bool): If True, highlight 'moer_lb_per_mwh' values during baseline charging.
     
@@ -311,8 +343,7 @@ def plot_time_series(df, day_long=False, mark_lowest_n=False, mark_baseline_char
     plt.figure(figsize=(20, 9))
     plt.plot(df.index, df['moer_lb_per_mwh'], marker='o', linestyle='-', label='MOER Values')
 
-    if day_long:
-        plt.title(f'CO₂ Marginal Emissions Rate (lb of CO₂/MWh) for Date: {df.index[0].date()}', fontsize=22, pad=25)
+    plt.title(f'CO₂ Marginal Operating Emissions Rate (lb of CO₂/MWh) for Date: {df.index[0].date()}', fontsize=22, pad=25)
 
     # Adjust the layout to add space above the title
     plt.subplots_adjust(top=0.85)
@@ -364,19 +395,22 @@ def plot_emissions(df):
                              y=df['total_emissions_recommended_charging'], 
                              mode='lines+markers', 
                              name='Recommended Charging Emissions', 
-                             line=dict(color='blue')))
+                             line=dict(color='blue'),
+                             visible='legendonly'))
     
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['total_emissions_baseline_charging'], 
                              mode='lines+markers', 
                              name='Baseline Charging Emissions', 
-                             line=dict(color='orange')))
+                             line=dict(color='orange'), 
+                             visible='legendonly'))
     
     fig.add_trace(go.Scatter(x=df.index, 
                              y=df['emissions_avoided'], 
                              mode='lines+markers', 
                              name='Emissions Avoided', 
-                             line=dict(color='green')))
+                             line=dict(color='green'), 
+                             visible=True))
     
     # Update layout for better readability
     fig.update_layout(
@@ -394,7 +428,10 @@ def plot_emissions(df):
         font=dict(size=20, color='black'),  # Set axes and legend font size and color
         legend=dict(font=dict(size=18, color='black'), orientation='h', yanchor='top', y=-0.6, xanchor='center', x=0.5),  # Position legend below the graph
         template='plotly_white',  # Use Plotly's white template
-        xaxis=dict(tickfont=dict(size=16, color='black')),  # Set x-axis tick font size and color
+        xaxis=dict(
+            tickfont=dict(size=16, color='black'),
+            range=[datetime(2023, 3, 1), datetime(2023, 3, 31)]  # Set the default range to March 2023
+        ),  
         yaxis=dict(tickfont=dict(size=16, color='black')),  # Set y-axis tick font size and color
         plot_bgcolor='white',  # Set plot background color to white
         paper_bgcolor='white'   # Set paper background color to white
@@ -456,7 +493,11 @@ if st.session_state.calculation_done:
     st.markdown(f"#### Key Results")
     st.markdown(f"* **Total annual emissions associated with Baseline Charging Approach:** **{annual_emissions_baseline_charging:.0f} lb of CO₂**")
     st.markdown(f"* **Total annual emissions associated with Recommended Charging Approach:** **{annual_emissions_recommended_charging:.0f} lb of CO₂**")
-    st.markdown(f"* **Total annual emissions avoided:** **{annual_emissions_avoided:.0f} lb of CO₂**")
+    
+    
+    # Highlight the percentage number using HTML in green
+    highlighted_emissions_avoided = f"<span style='color: green; font-weight: bold; font-size: 18px;'>{annual_emissions_avoided:.0f} lb of CO₂</span>"
+    st.markdown(f"* **Total annual emissions avoided:** **{highlighted_emissions_avoided}**", unsafe_allow_html=True)
 
     # Highlight the percentage number using HTML in green
     highlighted_percentage = f"<span style='color: green; font-weight: bold; font-size: 18px;'>{percentage_emissions_avoided:.2f}%</span>"
@@ -465,7 +506,7 @@ if st.session_state.calculation_done:
     st.markdown(f"* **Percentage of emissions avoided:** **{highlighted_percentage}**", unsafe_allow_html=True)
 
     annual_emissions_avoided_tree_equivalent = annual_emissions_avoided / 48
-    st.info(f"For perspective, total CO₂ avoided ~ CO₂ absorbed by **{annual_emissions_avoided_tree_equivalent:.1f} mature trees 🌳** over the course of a year.")
+    st.info(f"For perspective, total annual CO₂ avoided ~ CO₂ absorbed by **{annual_emissions_avoided_tree_equivalent:.1f} mature trees 🌳** over the course of a year.")
 
 with st.expander('Visualize recommended charging times on any given night (9pm to 6am)'):
     if st.session_state.calculation_done:
@@ -488,7 +529,8 @@ with st.expander('Visualize recommended charging times on any given night (9pm t
             # st.dataframe(st.session_state.selected_transformed_df)  
 
             #Plotting the time series graph
-            plot_time_series(st.session_state.selected_transformed_df, day_long=True, mark_lowest_n=True, mark_baseline_charging=True)
+            plot_time_series(st.session_state.selected_transformed_df, mark_lowest_n=True, mark_baseline_charging=True)
+            st.write("**Note:**  The baseline charging MOER values are based on the input baseline charging start time.")
 
 
         else:
@@ -498,9 +540,38 @@ with st.expander('Visualize recommended charging times on any given night (9pm t
 
 
 
-with st.expander('Visualize the daily emissions associated with baseline v/s recommended charging approach'):
+with st.expander('Visualize the daily emissions avoided'):
     if st.session_state.calculation_done:
         # st.dataframe(st.session_state.final_df_with_results)
+        st.write("**Tip:** This graph is interactive! You can select longer or shorter time intervals and add more data by clicking the greyed-out items in the legend.")
         plot_emissions(st.session_state.final_df_with_results)
     else:
         st.warning("Please calculate the charging time first.")
+
+
+# Adding a "Contact Me" section at the end
+st.write("---")
+st.subheader("Contact Me")
+st.write("If you have any questions or feedback, please do reach out!")
+st.write("[📧 Send me an email](mailto:raghavmittal.wbs@gmail.com)")
+
+# Adding a footer with markdown
+footer = """
+    <style>
+    .footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #f1f1f1;
+        padding: 5px;
+        text-align: center;
+        font-size: 14px;
+        color: #808080;
+    }
+    </style>
+    <div class="footer">
+        <p>© 2024 Raghav Mittal. All rights reserved.</p>
+    </div>
+"""
+
